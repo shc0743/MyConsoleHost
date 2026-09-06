@@ -9,21 +9,25 @@ void app::ipc::IPCWindow::requestCreateConsole(EventData& ev) {
 		ev.returnValue(ERROR_INVALID_PARAMETER);
 		return;
 	}
-	CreateConsoleRequestInfo req{}; SIZE_T readed{};
-	if (!ReadProcessMemory(hProcess, (PVOID)ev.lParam, &req, sizeof(req), &readed) || readed != sizeof(req)) {
+	auto req = make_unique<CreateConsoleRequestInfo>(); SIZE_T readed{};
+	if (!ReadProcessMemory(hProcess, (PVOID)ev.lParam, req.get(), sizeof(CreateConsoleRequestInfo), &readed)
+		|| readed != sizeof(CreateConsoleRequestInfo)) {
 		CloseHandle(hProcess);
 		ev.returnValue(STATUS_ACCESS_VIOLATION);
 		return;
 	}
 	CloseHandle(hProcess);
-	auto pWindow = shared_ptr<ui::ConsoleWindow>(new ui::ConsoleWindow(req.x, req.y, req.w, req.h));
+	auto pWindow = shared_ptr<ui::ConsoleWindow>(new ui::ConsoleWindow(req->x, req->y, req->w, req->h));
 	pWindow->create();
-	if (pWindow->SpawnApplication(req.lpApplication, req.lpCommand) == false) {
+	if (pWindow->SpawnApplication(
+		req->lpApplication[0] ? req->lpApplication : NULL,
+		req->lpCommand[0] ? req->lpCommand : NULL
+	) == false) {
 		ev.returnValue(GetLastError());
 		DestroyWindow(*pWindow);
 		return;
 	}
-	pWindow->show(req.nCmdShow);
+	pWindow->show(req->nCmdShow);
 	pWindow->focus();
 	app::windows.push_back(std::move(pWindow));
 }

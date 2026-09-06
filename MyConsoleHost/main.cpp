@@ -88,7 +88,8 @@ int APIENTRY wWinMain(
 
 
 bool app::CreateConsoleWindow(HWND pIPC, LPCWSTR lpApplication, LPCWSTR lpCommand, LPSTARTUPINFOW lpStartupInfo) {
-	ipc::CreateConsoleRequestInfo ccri{};
+	auto lpCCRI = make_unique<ipc::CreateConsoleRequestInfo>();
+	ipc::CreateConsoleRequestInfo& ccri = *lpCCRI.get();
 	ccri.x = ccri.y = CW_USEDEFAULT;
 	ccri.w = 120;
 	ccri.h = 30;
@@ -103,13 +104,13 @@ bool app::CreateConsoleWindow(HWND pIPC, LPCWSTR lpApplication, LPCWSTR lpComman
 			ccri.h = lpStartupInfo->dwYSize / fontSize;
 		}
 	}
-	ccri.lpApplication = lpApplication;
-	ccri.lpCommand = lpCommand;
+	if (lpApplication) wcscpy_s(ccri.lpApplication, lpApplication);
+	if (lpCommand) wcscpy_s(ccri.lpCommand, lpCommand);
 	ccri.nCmdShow = (lpStartupInfo && (lpStartupInfo->dwFlags & STARTF_USESHOWWINDOW)) ?
 		(lpStartupInfo->wShowWindow) : SW_NORMAL;
 	
 	DWORD_PTR result = 0;
-	if (!SendMessageTimeoutW(pIPC, ipc::IPC_RequestCreateConsole, GetCurrentProcessId(), (LPARAM)&ccri,
+	if (!SendMessageTimeoutW(pIPC, ipc::IPC_RequestCreateConsole, GetCurrentProcessId(), (LPARAM)lpCCRI.get(),
 		SMTO_ABORTIFHUNG | SMTO_BLOCK | SMTO_ERRORONEXIT, 5000, &result)) result = GetLastError();
 	SetLastError((DWORD)result);
 	return 0 == result;

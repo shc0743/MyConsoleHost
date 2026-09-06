@@ -205,6 +205,7 @@ void app::ui::ConsoleWindow::worker() {
 	}
 	requestUiRefresh();
 	outputReadSide.close();
+	post(WM_CLOSE);
 }
 
 void app::ui::ConsoleWindow::pumpJoinWorker() {
@@ -1157,7 +1158,7 @@ bool app::ui::ConsoleWindow::cellSelected(int bufX, int bufY) const {
 
 static bool isWordSeparator(wchar_t ch) {
 	if (iswspace(ch)) return true;
-	static const wchar_t* punct = L" \t,.;:!?\"'()[]{}<>/\\|`~!@#$%^&*-=+，。；：！？、（）【】「」“”‘’《》—…";
+	static const wchar_t* punct = L" \t,.;:!?\"'()[]{}<>/\\|`~!@#$%^&*-=+";
 	for (const wchar_t* p = punct; *p; ++p) if (*p == ch) return true;
 	return false;
 }
@@ -1333,6 +1334,7 @@ void app::ui::ConsoleWindow::onRButtonUp(EventData& ev) {
 }
 
 void app::ui::ConsoleWindow::showContextMenu(int sx, int sy) {
+	// FIXME: remove the fucking code created by doubao
 	HMENU hMenu = CreatePopupMenu();
 	if (!hMenu) return;
 	AppendMenuW(hMenu, hasSel ? MF_STRING : MF_STRING | MF_GRAYED, IDM_COPY, L"复制\tCtrl+Shift+C");
