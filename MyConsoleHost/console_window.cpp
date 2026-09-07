@@ -46,7 +46,7 @@ void app::ui::ConsoleWindow::onCreated() {
 	vtcb.onCtrl = [this](wchar_t ch) { onVtCtrl(ch); };
 	vtcb.onCsi = [this](wchar_t f, const std::vector<int>& p, wchar_t pm, const std::wstring& im) {
 		onVtCsi(f, p, pm, im);
-	};
+		};
 	vtcb.onOsc = [this](int cmd, const std::wstring& d) { onVtOsc(cmd, d); };
 	vtParser.setCallbacks(std::move(vtcb));
 }
@@ -73,7 +73,7 @@ void app::ui::ConsoleWindow::onDestroy() {
 }
 
 
-bool app::ui::ConsoleWindow::SpawnApplication(_In_opt_ PCWSTR app, _In_opt_ PCWSTR cmd) {
+bool app::ui::ConsoleWindow::SpawnApplication(_In_opt_ PCWSTR app, _In_opt_ PCWSTR cmd, _In_opt_ PCWSTR cd) {
 	if (_hosted) throw runtime_error("This console window already hosted an application.");
 
 	HANDLE inputReadSide{}, outputWriteSide{};
@@ -126,7 +126,7 @@ bool app::ui::ConsoleWindow::SpawnApplication(_In_opt_ PCWSTR app, _In_opt_ PCWS
 	WCHAR COMSPEC[260]{};
 	GetEnvironmentVariableW(L"COMSPEC", COMSPEC, 260);
 	if (!CreateProcessW((app || cmd) ? ((app && app[0]) ? app : NULL) : COMSPEC, cmd ? c.data() : COMSPEC,
-		NULL, NULL, FALSE, flags, NULL, NULL, (LPSTARTUPINFOW)&si, &pi)) {
+		NULL, NULL, FALSE, flags, NULL, cd, (LPSTARTUPINFOW)&si, &pi)) {
 		if (attributeList) DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
 		CloseHandle(inputReadSide); CloseHandle(outputWriteSide);
 		CloseHandle(outputReadSide); CloseHandle(inputWriteSide);
@@ -173,7 +173,8 @@ void app::ui::ConsoleWindow::worker() {
 		if (hHostedProcess) {
 			DWORD w = WaitForSingleObject(hHostedProcess, 10);
 			if (w == WAIT_OBJECT_0) continue;
-		} else {
+		}
+		else {
 			Sleep(10);
 		}
 		DWORD avail = 0;
@@ -253,7 +254,8 @@ void app::ui::ConsoleWindow::processOutput(const char* data, DWORD len) {
 					if (--utf8Remaining == 0) {
 						processChar(utf8CodePoint <= 0xFFFF ? (wchar_t)utf8CodePoint : L'?');
 					}
-				} else {
+				}
+				else {
 					utf8Remaining = 0;
 					utf8CodePoint = 0;
 					continue;
@@ -262,13 +264,16 @@ void app::ui::ConsoleWindow::processOutput(const char* data, DWORD len) {
 			}
 			if (c < 0x80) {
 				processChar((wchar_t)c);
-			} else if ((c & 0xE0) == 0xC0) {
+			}
+			else if ((c & 0xE0) == 0xC0) {
 				utf8CodePoint = c & 0x1F;
 				utf8Remaining = 1;
-			} else if ((c & 0xF0) == 0xE0) {
+			}
+			else if ((c & 0xF0) == 0xE0) {
 				utf8CodePoint = c & 0x0F;
 				utf8Remaining = 2;
-			} else if ((c & 0xF8) == 0xF0) {
+			}
+			else if ((c & 0xF8) == 0xF0) {
 				utf8CodePoint = c & 0x07;
 				utf8Remaining = 3;
 			}
@@ -314,7 +319,8 @@ void app::ui::ConsoleWindow::onVtCtrl(wchar_t ch) {
 			cursorX = 0;
 			++cursorY;
 			if (cursorY >= hc) { scrollUp(1); cursorY = hc - 1; }
-		} else {
+		}
+		else {
 			cursorX = next;
 		}
 		break;
@@ -327,9 +333,102 @@ void app::ui::ConsoleWindow::onVtCtrl(wchar_t ch) {
 	}
 }
 
+static std::wstring base64EncodeW(const std::wstring& in) {
+	static const wchar_t tbl[] = L"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	std::wstring out;
+	out.reserve(((in.size() + 2) / 3) * 4);
+	for (size_t i = 0; i < in.size(); i += 3) {
+		uint32_t n = (uint32_t)(uint8_t)in[i] << 16;
+		if (i + 1 < in.size()) n |= (uint32_t)(uint8_t)in[i + 1] << 8;
+		if (i + 2 < in.size()) n |= (uint32_t)(uint8_t)in[i + 2];
+		out += tbl[(n >> 18) & 63];
+		out += tbl[(n >> 12) & 63];
+		out += (i + 1 < in.size()) ? tbl[(n >> 6) & 63] : L'=';
+		out += (i + 2 < in.size()) ? tbl[n & 63] : L'=';
+	}
+	return out;
+}
+
+static std::wstring base64DecodeW(const std::wstring& in) {
+	static const int8_t tbl[256] = {
+		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,62,-1,-1,-1,63,
+		52,53,54,55,56,57,58,59,60,61,-1,-1,-1,-1,-1,-1,
+		-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,
+		15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,
+		-1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,
+		41,42,43,44,45,46,47,48,49,50,51,-1,-1,-1,-1,-1,
+		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+	};
+	std::wstring out;
+	out.reserve(in.size() * 3 / 4);
+	uint32_t buf = 0; int bits = 0;
+	for (wchar_t ch : in) {
+		if (ch == L'=') break;
+		if (ch > 255) continue;
+		int8_t v = tbl[(uint8_t)ch];
+		if (v < 0) continue;
+		buf = (buf << 6) | (uint8_t)v;
+		bits += 6;
+		if (bits >= 8) {
+			bits -= 8;
+			out += (wchar_t)((buf >> bits) & 0xFF);
+		}
+	}
+	return out;
+}
 void app::ui::ConsoleWindow::onVtOsc(int command, const std::wstring& data) {
 	if (command == 0 || command == 2) {
 		pendingTitle = data;
+		return;
+	}
+	if (command == 52) {
+		size_t semi = data.find(L';');
+		if (semi == std::wstring::npos) return;
+		std::wstring sel = data.substr(0, semi);
+		std::wstring payload = data.substr(semi + 1);
+		bool isClipboard = (sel.find(L'c') != std::wstring::npos);
+		if (!isClipboard) return;
+		if (payload == L"?") {
+			if (!OpenClipboard(hwnd)) return;
+			HANDLE hData = GetClipboardData(CF_UNICODETEXT);
+			std::wstring text;
+			if (hData) {
+				const wchar_t* p = (const wchar_t*)GlobalLock(hData);
+				if (p) { text = p; GlobalUnlock(hData); }
+			}
+			CloseClipboard();
+			std::wstring b64 = base64EncodeW(text);
+			std::wstring reply = L"\x1B]52;c;" + b64 + L"\x07";
+			std::string utf8;
+			utf8.reserve(reply.size() * 2);
+			for (wchar_t wc : reply) {
+				if (wc < 0x80) utf8 += (char)wc;
+				else if (wc < 0x800) { utf8 += (char)(0xC0 | (wc >> 6)); utf8 += (char)(0x80 | (wc & 0x3F)); }
+				else { utf8 += (char)(0xE0 | (wc >> 12)); utf8 += (char)(0x80 | ((wc >> 6) & 0x3F)); utf8 += (char)(0x80 | (wc & 0x3F)); }
+			}
+			writeInputBytes(utf8.c_str(), (DWORD)utf8.size());
+		} else {
+			std::wstring decoded = base64DecodeW(payload);
+			if (decoded.empty()) return;
+			if (!OpenClipboard(hwnd)) return;
+			EmptyClipboard();
+			size_t bytes = (decoded.size() + 1) * sizeof(wchar_t);
+			HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, bytes);
+			if (hMem) {
+				wchar_t* p = (wchar_t*)GlobalLock(hMem);
+				if (p) { memcpy(p, decoded.c_str(), bytes); GlobalUnlock(hMem); SetClipboardData(CF_UNICODETEXT, hMem); }
+			}
+			CloseClipboard();
+		}
 	}
 }
 
@@ -350,13 +449,13 @@ void app::ui::ConsoleWindow::putPrintable(wchar_t ch) {
 }
 
 void app::ui::ConsoleWindow::onVtCsi(wchar_t finalByte, const std::vector<int>& params,
-									   wchar_t privateMarker, const std::wstring& intermediates) {
+	wchar_t privateMarker, const std::wstring& intermediates) {
 	auto p = [&](size_t i, int def) -> int {
 		return (i < params.size() && params[i] > 0) ? params[i] : def;
-	};
+		};
 	auto moveX = [&](int x) {
 		cursorX = (std::clamp)(x, 0, wc - 1);
-	};
+		};
 	switch (finalByte) {
 	case L'A': cursorY = (std::max)(0, cursorY - p(0, 1)); if (cursorX >= wc) cursorX = wc - 1; break;
 	case L'B': cursorY = (std::min)(hc - 1, cursorY + p(0, 1)); if (cursorX >= wc) cursorX = wc - 1; break;
@@ -376,24 +475,25 @@ void app::ui::ConsoleWindow::onVtCsi(wchar_t finalByte, const std::vector<int>& 
 		for (int i = 0; i < p(0, 1) && cursorX + i < wc; ++i) clearCell(cursorX + i, cursorY);
 		break;
 	case L'P': // DCH：从光标处删除 N 个字符（后续字符左移，尾部填空格）
-		{
-			int dn = p(0, 1);
-			for (int x = cursorX; x < wc; ++x) {
-				int src = x + dn;
-				if (src < wc) {
-					auto& dbuf = inAltBuffer ? altBuffer : buffer;
-					auto& dflags = inAltBuffer ? altCellFlags : cellFlags;
-					auto& dfg = inAltBuffer ? altFgColors : fgColors;
-					auto& dbg2 = inAltBuffer ? altBgColors : bgColors;
-					size_t di = inAltBuffer ? (size_t)cursorY * wc + x : (size_t)(HistoryMax + cursorY) * wc + x;
-					size_t si = inAltBuffer ? (size_t)cursorY * wc + src : (size_t)(HistoryMax + cursorY) * wc + src;
-					dbuf[di] = dbuf[si]; dflags[di] = dflags[si]; dfg[di] = dfg[si]; dbg2[di] = dbg2[si];
-				} else {
-					clearCell(x, cursorY);
-				}
+	{
+		int dn = p(0, 1);
+		for (int x = cursorX; x < wc; ++x) {
+			int src = x + dn;
+			if (src < wc) {
+				auto& dbuf = inAltBuffer ? altBuffer : buffer;
+				auto& dflags = inAltBuffer ? altCellFlags : cellFlags;
+				auto& dfg = inAltBuffer ? altFgColors : fgColors;
+				auto& dbg2 = inAltBuffer ? altBgColors : bgColors;
+				size_t di = inAltBuffer ? (size_t)cursorY * wc + x : (size_t)(HistoryMax + cursorY) * wc + x;
+				size_t si = inAltBuffer ? (size_t)cursorY * wc + src : (size_t)(HistoryMax + cursorY) * wc + src;
+				dbuf[di] = dbuf[si]; dflags[di] = dflags[si]; dfg[di] = dfg[si]; dbg2[di] = dbg2[si];
+			}
+			else {
+				clearCell(x, cursorY);
 			}
 		}
-		break;
+	}
+	break;
 	case L'm': applySgr(params); break;
 	case L'n':
 		if (p(0, 0) == 6) {
@@ -409,6 +509,8 @@ void app::ui::ConsoleWindow::onVtCsi(wchar_t finalByte, const std::vector<int>& 
 				else if (v == 1047) enterAltBuffer(false);
 				else if (v == 1048) { savedCursorX = cursorX; savedCursorY = cursorY; }
 				else if (v == 1049) enterAltBuffer(true);
+				else if (v == 9 || v == 1000 || v == 1002 || v == 1003) mouseTrackingMode = v;
+				else if (v == 1006) sgrMouseMode = true;
 			}
 		}
 		break;
@@ -419,6 +521,8 @@ void app::ui::ConsoleWindow::onVtCsi(wchar_t finalByte, const std::vector<int>& 
 				else if (v == 1047) exitAltBuffer(false);
 				else if (v == 1048) { cursorX = savedCursorX; cursorY = savedCursorY; }
 				else if (v == 1049) exitAltBuffer(true);
+				else if (v == 9 || v == 1000 || v == 1002 || v == 1003) mouseTrackingMode = 0;
+				else if (v == 1006) sgrMouseMode = false;
 			}
 		}
 		break;
@@ -464,7 +568,8 @@ void app::ui::ConsoleWindow::applySgr(const std::vector<int>& params) {
 				if (p == 38) { fgRgb = color256(params[i + 2]); fgIsRgb = true; }
 				else { bgRgb = color256(params[i + 2]); bgIsRgb = true; }
 				i += 2;
-			} else if (i + 4 < params.size() && params[i + 1] == 2) {
+			}
+			else if (i + 4 < params.size() && params[i + 1] == 2) {
 				int r = (std::clamp)(params[i + 2], 0, 255);
 				int g = (std::clamp)(params[i + 3], 0, 255);
 				int b = (std::clamp)(params[i + 4], 0, 255);
@@ -552,7 +657,8 @@ void app::ui::ConsoleWindow::scrollUp(int rows) {
 		std::fill(cellFlags.begin(), cellFlags.end(), CELL_NORMAL);
 		std::fill(fgColors.begin(), fgColors.end(), DefaultForeground);
 		std::fill(bgColors.begin(), bgColors.end(), DefaultBackground);
-	} else {
+	}
+	else {
 		size_t keepRows = (size_t)(totalRows - rows);
 		std::memmove(buffer.data(), buffer.data() + rowCells * rows, rowCells * keepRows * sizeof(wchar_t));
 		std::memmove(cellFlags.data(), cellFlags.data() + rowCells * rows, rowCells * keepRows * sizeof(uint8_t));
@@ -757,18 +863,60 @@ void app::ui::ConsoleWindow::onKeyDown(EventData& ev) {
 	wchar_t seq[16]{};
 	int len = 0;
 	switch (vk) {
-	case VK_RETURN: if (!alt) seq[len++] = L'\r'; break;
+	case VK_RETURN: if (!alt) seq[len++] = ctrl ? L'\n' : L'\r'; break;
 	case VK_BACK:
 		if (!alt) seq[len++] = ctrl ? L'\x08' : L'\x7f';
 		break;
 	case VK_TAB: if (!alt) seq[len++] = L'\t'; break;
 	case VK_ESCAPE: seq[len++] = 0x1B; break;
-	case VK_UP: wcscpy_s(seq, 16, L"\x1b[A"); len = 3; break;
-	case VK_DOWN: wcscpy_s(seq, 16, L"\x1b[B"); len = 3; break;
-	case VK_RIGHT: wcscpy_s(seq, 16, L"\x1b[C"); len = 3; break;
-	case VK_LEFT: wcscpy_s(seq, 16, L"\x1b[D"); len = 3; break;
-	case VK_HOME: wcscpy_s(seq, 16, shift ? L"\x1b[1;2H" : L"\x1b[H"); len = shift ? 6 : 3; break;
-	case VK_END: wcscpy_s(seq, 16, shift ? L"\x1b[1;2F" : L"\x1b[F"); len = shift ? 6 : 3; break;
+	case VK_UP:
+		if (ctrl || shift || alt) {
+			int mod = 1 + (shift ? 1 : 0) + (alt ? 2 : 0) + (ctrl ? 4 : 0);
+			len = swprintf(seq, 16, L"\x1b[1;%dA", mod);
+		} else {
+			wcscpy_s(seq, 16, L"\x1b[A"); len = 3;
+		}
+		break;
+	case VK_DOWN:
+		if (ctrl || shift || alt) {
+			int mod = 1 + (shift ? 1 : 0) + (alt ? 2 : 0) + (ctrl ? 4 : 0);
+			len = swprintf(seq, 16, L"\x1b[1;%dB", mod);
+		} else {
+			wcscpy_s(seq, 16, L"\x1b[B"); len = 3;
+		}
+		break;
+	case VK_RIGHT:
+		if (ctrl || shift || alt) {
+			int mod = 1 + (shift ? 1 : 0) + (alt ? 2 : 0) + (ctrl ? 4 : 0);
+			len = swprintf(seq, 16, L"\x1b[1;%dC", mod);
+		} else {
+			wcscpy_s(seq, 16, L"\x1b[C"); len = 3;
+		}
+		break;
+	case VK_LEFT:
+		if (ctrl || shift || alt) {
+			int mod = 1 + (shift ? 1 : 0) + (alt ? 2 : 0) + (ctrl ? 4 : 0);
+			len = swprintf(seq, 16, L"\x1b[1;%dD", mod);
+		} else {
+			wcscpy_s(seq, 16, L"\x1b[D"); len = 3;
+		}
+		break;
+	case VK_HOME:
+		if (ctrl || shift || alt) {
+			int mod = 1 + (shift ? 1 : 0) + (alt ? 2 : 0) + (ctrl ? 4 : 0);
+			len = swprintf(seq, 16, L"\x1b[1;%dH", mod);
+		} else {
+			wcscpy_s(seq, 16, L"\x1b[H"); len = 3;
+		}
+		break;
+	case VK_END:
+		if (ctrl || shift || alt) {
+			int mod = 1 + (shift ? 1 : 0) + (alt ? 2 : 0) + (ctrl ? 4 : 0);
+			len = swprintf(seq, 16, L"\x1b[1;%dF", mod);
+		} else {
+			wcscpy_s(seq, 16, L"\x1b[F"); len = 3;
+		}
+		break;
 	case VK_PRIOR: wcscpy_s(seq, 16, L"\x1b[5~"); len = 4; break;
 	case VK_NEXT: wcscpy_s(seq, 16, L"\x1b[6~"); len = 4; break;
 	case VK_INSERT:
@@ -845,7 +993,8 @@ void app::ui::ConsoleWindow::onImeComposition(EventData& ev) {
 		if (bytes > 0) {
 			imeComp.resize(bytes / sizeof(wchar_t));
 			ImmGetCompositionStringW(hIMC, GCS_COMPSTR, &imeComp[0], bytes);
-		} else {
+		}
+		else {
 			imeComp.clear();
 		}
 		positionImeWindow();
@@ -944,6 +1093,10 @@ void app::ui::ConsoleWindow::onSize(EventData& ev) {
 	if (sizeChanged && hConsole) ResizePseudoConsole(hConsole, COORD{ (SHORT)nwc, (SHORT)nhc });
 	updateScrollbar();
 	InvalidateRect(hwnd, nullptr, FALSE);
+}
+
+void app::ui::ConsoleWindow::onClose(EventData& ev) {
+	remove_style_ex(WS_EX_LAYERED);
 }
 
 void app::ui::ConsoleWindow::onEraseBkgnd(EventData& ev) {
@@ -1096,9 +1249,53 @@ void app::ui::ConsoleWindow::onVScroll(EventData& ev) {
 	scrollViewport(historyUsed - pos);
 }
 
+void app::ui::ConsoleWindow::sendMouseEvent(int button, bool isRelease, bool isDrag, bool isWheel, int col, int row) {
+	if (mouseTrackingMode == 0 || hostedExited) return;
+	col = (std::clamp)(col, 1, wc);
+	row = (std::clamp)(row, 1, hc);
+	int btnCode;
+	if (isWheel) {
+		btnCode = sgrMouseMode ? (button == 0 ? 64 : 65) : (button == 0 ? 4 : 5);
+	}
+	else if (isDrag) {
+		btnCode = 32 + (button >= 0 ? button : 3);
+	}
+	else if (isRelease) {
+		btnCode = sgrMouseMode ? button : 3;
+	}
+	else {
+		btnCode = button;
+	}
+	if (mouseTrackingMode == 9 && isRelease) return;
+	if (sgrMouseMode) {
+		char suffix = isRelease ? 'm' : 'M';
+		char buf[64];
+		int n = snprintf(buf, sizeof(buf), "\x1B[<%d;%d;%d%c", btnCode, col, row, suffix);
+		writeInputBytes(buf, n);
+	}
+	else {
+		unsigned char buf[6];
+		buf[0] = 0x1B; buf[1] = '['; buf[2] = 'M';
+		buf[3] = (unsigned char)(std::min)(255, btnCode + 32);
+		buf[4] = (unsigned char)(std::min)(255, col + 32);
+		buf[5] = (unsigned char)(std::min)(255, row + 32);
+		writeInputBytes((const char*)buf, 6);
+	}
+}
+
 void app::ui::ConsoleWindow::onMouseWheel(EventData& ev) {
 	ev.preventDefault();
 	short delta = GET_WHEEL_DELTA_WPARAM((WPARAM)ev.wParam);
+	bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+	if (mouseTrackingMode != 0 && !shift) {
+		int mx = (short)LOWORD((DWORD_PTR)ev.lParam);
+		int my = (short)HIWORD((DWORD_PTR)ev.lParam);
+		POINT cell = measureCellPx();
+		int col = (std::clamp)(mx / (cell.x > 0 ? (int)cell.x : 1) + 1, 1, wc);
+		int row = (std::clamp)(my / (cell.y > 0 ? (int)cell.y : 1) + 1, 1, hc);
+		sendMouseEvent(delta > 0 ? 0 : 1, false, false, true, col, row);
+		return;
+	}
 	UINT linesPerNotch = 3;
 	SystemParametersInfoW(SPI_GETWHEELSCROLLLINES, 0, &linesPerNotch, 0);
 	if (linesPerNotch == 0) return;
@@ -1106,7 +1303,8 @@ void app::ui::ConsoleWindow::onMouseWheel(EventData& ev) {
 	if (linesPerNotch == WHEEL_PAGESCROLL) {
 		step = (delta > 0 ? -hc : hc);
 		wheelRemainder = 0;
-	} else {
+	}
+	else {
 		wheelRemainder += delta;
 		int actual = (std::max)(1, WHEEL_DELTA / (int)linesPerNotch);
 		step = wheelRemainder / actual;
@@ -1200,7 +1398,8 @@ void app::ui::ConsoleWindow::copySelection() {
 			int from, to;
 			if (blockSelection) {
 				from = c1; to = c2;
-			} else {
+			}
+			else {
 				from = (y == r1) ? c1 : 0;
 				to = (y == r2) ? c2 : wc - 1;
 			}
@@ -1252,9 +1451,11 @@ void app::ui::ConsoleWindow::pasteClipboard() {
 		if (text[i] == L'\r') {
 			normalized += L'\r';
 			if (i + 1 < text.size() && text[i + 1] == L'\n') ++i;
-		} else if (text[i] == L'\n') {
+		}
+		else if (text[i] == L'\n') {
 			normalized += L'\r';
-		} else if (text[i] == L'\t' || text[i] >= L' ') {
+		}
+		else if (text[i] == L'\t' || text[i] >= L' ') {
 			normalized += text[i];
 		}
 	}
@@ -1267,6 +1468,18 @@ void app::ui::ConsoleWindow::onLButtonDown(EventData& ev) {
 	ev.preventDefault();
 	if (hostedExited) return;
 	SetFocus(hwnd);
+	bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+	if (mouseTrackingMode != 0 && !shift) {
+		int mx = (short)LOWORD((DWORD_PTR)ev.lParam);
+		int my = (short)HIWORD((DWORD_PTR)ev.lParam);
+		POINT cell = measureCellPx();
+		int col = (std::clamp)(mx / (cell.x > 0 ? (int)cell.x : 1) + 1, 1, wc);
+		int row = (std::clamp)(my / (cell.y > 0 ? (int)cell.y : 1) + 1, 1, hc);
+		pressedMouseButton = 0;
+		sendMouseEvent(0, false, false, false, col, row);
+		SetCapture(hwnd);
+		return;
+	}
 	std::lock_guard<std::mutex> lock(bufMutex);
 	POINT c = cellFromPoint(ev.lParam);
 	bool alt = (GetKeyState(VK_MENU) & 0x8000) != 0;
@@ -1284,7 +1497,8 @@ void app::ui::ConsoleWindow::onLButtonDown(EventData& ev) {
 		wordBoundsAt(c.x, c.y, x1, x2);
 		selAX = x1; selAY = c.y;
 		selBX = x2; selBY = c.y;
-	} else {
+	}
+	else {
 		selAX = selBX = c.x;
 		selAY = selBY = c.y;
 	}
@@ -1295,6 +1509,26 @@ void app::ui::ConsoleWindow::onLButtonDown(EventData& ev) {
 }
 
 void app::ui::ConsoleWindow::onMouseMove(EventData& ev) {
+	if (mouseTrackingMode != 0) {
+		bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+		if (!shift) {
+			int mx = (short)LOWORD((DWORD_PTR)ev.lParam);
+			int my = (short)HIWORD((DWORD_PTR)ev.lParam);
+			POINT cell = measureCellPx();
+			int col = (std::clamp)(mx / (cell.x > 0 ? (int)cell.x : 1) + 1, 1, wc);
+			int row = (std::clamp)(my / (cell.y > 0 ? (int)cell.y : 1) + 1, 1, hc);
+			if (mouseTrackingMode == 1003) {
+				sendMouseEvent(pressedMouseButton, false, true, false, col, row);
+				ev.preventDefault();
+				return;
+			}
+			else if (mouseTrackingMode == 1002 && pressedMouseButton >= 0) {
+				sendMouseEvent(pressedMouseButton, false, true, false, col, row);
+				ev.preventDefault();
+				return;
+			}
+		}
+	}
 	if (!selecting) return;
 	ev.preventDefault();
 	std::lock_guard<std::mutex> lock(bufMutex);
@@ -1305,7 +1539,8 @@ void app::ui::ConsoleWindow::onMouseMove(EventData& ev) {
 		wordBoundsAt(c.x, c.y, x1, x2);
 		long long anchor = (long long)selAY * wc + selAX;
 		long long cur = (long long)ny * wc + nx;
-		if (cur >= anchor) { nx = x2; } else { nx = x1; }
+		if (cur >= anchor) { nx = x2; }
+		else { nx = x1; }
 	}
 	if (nx != selBX || ny != selBY) {
 		selBX = nx;
@@ -1315,6 +1550,18 @@ void app::ui::ConsoleWindow::onMouseMove(EventData& ev) {
 }
 
 void app::ui::ConsoleWindow::onLButtonUp(EventData& ev) {
+	if (pressedMouseButton == 0) {
+		ev.preventDefault();
+		pressedMouseButton = -1;
+		ReleaseCapture();
+		int mx = (short)LOWORD((DWORD_PTR)ev.lParam);
+		int my = (short)HIWORD((DWORD_PTR)ev.lParam);
+		POINT cell = measureCellPx();
+		int col = (std::clamp)(mx / (cell.x > 0 ? (int)cell.x : 1) + 1, 1, wc);
+		int row = (std::clamp)(my / (cell.y > 0 ? (int)cell.y : 1) + 1, 1, hc);
+		sendMouseEvent(0, true, false, false, col, row);
+		return;
+	}
 	if (!selecting) return;
 	ev.preventDefault();
 	selecting = false;
@@ -1323,15 +1570,76 @@ void app::ui::ConsoleWindow::onLButtonUp(EventData& ev) {
 
 void app::ui::ConsoleWindow::onRButtonUp(EventData& ev) {
 	ev.preventDefault();
+	if (pressedMouseButton == 2) {
+		pressedMouseButton = -1;
+		ReleaseCapture();
+		int mx = (short)LOWORD((DWORD_PTR)ev.lParam);
+		int my = (short)HIWORD((DWORD_PTR)ev.lParam);
+		POINT cell = measureCellPx();
+		int col = (std::clamp)(mx / (cell.x > 0 ? (int)cell.x : 1) + 1, 1, wc);
+		int row = (std::clamp)(my / (cell.y > 0 ? (int)cell.y : 1) + 1, 1, hc);
+		sendMouseEvent(2, true, false, false, col, row);
+		return;
+	}
 	bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
 	if (shift) return;
 	if (hasSel) {
 		copySelection();
 		clearSelection();
-	} else {
+	}
+	else {
 		pasteClipboard();
 	}
 }
+
+void app::ui::ConsoleWindow::onRButtonDown(EventData& ev) {
+	ev.preventDefault();
+	if (hostedExited) return;
+	SetFocus(hwnd);
+	bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+	if (mouseTrackingMode != 0 && !shift) {
+		int mx = (short)LOWORD((DWORD_PTR)ev.lParam);
+		int my = (short)HIWORD((DWORD_PTR)ev.lParam);
+		POINT cell = measureCellPx();
+		int col = (std::clamp)(mx / (cell.x > 0 ? (int)cell.x : 1) + 1, 1, wc);
+		int row = (std::clamp)(my / (cell.y > 0 ? (int)cell.y : 1) + 1, 1, hc);
+		pressedMouseButton = 2;
+		sendMouseEvent(2, false, false, false, col, row);
+		SetCapture(hwnd);
+	}
+}
+
+void app::ui::ConsoleWindow::onMButtonDown(EventData& ev) {
+	ev.preventDefault();
+	if (hostedExited) return;
+	SetFocus(hwnd);
+	bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+	if (mouseTrackingMode != 0 && !shift) {
+		int mx = (short)LOWORD((DWORD_PTR)ev.lParam);
+		int my = (short)HIWORD((DWORD_PTR)ev.lParam);
+		POINT cell = measureCellPx();
+		int col = (std::clamp)(mx / (cell.x > 0 ? (int)cell.x : 1) + 1, 1, wc);
+		int row = (std::clamp)(my / (cell.y > 0 ? (int)cell.y : 1) + 1, 1, hc);
+		pressedMouseButton = 1;
+		sendMouseEvent(1, false, false, false, col, row);
+		SetCapture(hwnd);
+	}
+}
+
+void app::ui::ConsoleWindow::onMButtonUp(EventData& ev) {
+	if (pressedMouseButton == 1) {
+		ev.preventDefault();
+		pressedMouseButton = -1;
+		ReleaseCapture();
+		int mx = (short)LOWORD((DWORD_PTR)ev.lParam);
+		int my = (short)HIWORD((DWORD_PTR)ev.lParam);
+		POINT cell = measureCellPx();
+		int col = (std::clamp)(mx / (cell.x > 0 ? (int)cell.x : 1) + 1, 1, wc);
+		int row = (std::clamp)(my / (cell.y > 0 ? (int)cell.y : 1) + 1, 1, hc);
+		sendMouseEvent(1, true, false, false, col, row);
+	}
+}
+
 
 void app::ui::ConsoleWindow::showContextMenu(int sx, int sy) {
 	// FIXME: remove the fucking code created by doubao
@@ -1419,6 +1727,7 @@ std::vector<int> app::ui::ConsoleWindow::parseCsiParams(const std::wstring& s) {
 	return result;
 }
 
+// TODO: remove fucking doubao fucker hardcoded impl
 bool app::ui::ConsoleWindow::isWideChar(wchar_t ch) {
 	return (ch >= 0x1100 && ch <= 0x115F) || // 谚文 Jamo
 		(ch >= 0x2329 && ch <= 0x232A) ||

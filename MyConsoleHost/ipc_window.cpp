@@ -21,7 +21,8 @@ void app::ipc::IPCWindow::requestCreateConsole(EventData& ev) {
 	pWindow->create();
 	if (pWindow->SpawnApplication(
 		req->lpApplication[0] ? req->lpApplication : NULL,
-		req->lpCommand[0] ? req->lpCommand : NULL
+		req->lpCommand[0] ? req->lpCommand : NULL,
+		req->lpCurrentDirectory
 	) == false) {
 		ev.returnValue(GetLastError());
 		DestroyWindow(*pWindow);

@@ -36,7 +36,14 @@ int APIENTRY wWinMain(
 	app.add_flag("--no-ui", noUI);
 	app.add_flag("--new-instance", newInstance);
 	try { app.parse(utf16_utf8(GetCommandLineW()), true); }
-	catch (...) {}
+	catch (exception& exc) {
+		fputs("0\r\n", stdout);
+		fputs(exc.what(), stderr);
+		// this is only debug purpose; do not depend in production!
+		if (wstring(lpCmdLine).find(L"--no-ui") == wstring::npos) MessageBoxW(NULL, format(L"{}: {}",
+			utf8_utf16(typeid(exc).name()), utf8_utf16(exc.what())).c_str(), NULL, 0x10);
+		return ERROR_INVALID_PARAMETER;
+	}
 
 	auto consoleWinStart = [&app, &noUI](HWND hWnd) -> int {
 		STARTUPINFOW si{};
@@ -79,10 +86,11 @@ int APIENTRY wWinMain(
 		}
 	}
 
-	if (app::windows.size() == 0) {
+	if (!hidden && app::windows.size() == 0) {
 		if (IsWindow(*app::ipcWindow)) app::ipcWindow->close();
 		return ERROR_NO_DATA;
 	}
+	cout << w32oop::util::str::converts::wstr_str(to_wstring((ULONG_PTR)HWND(*app::ipcWindow))) << endl;
 	return Window::run();
 }
 
@@ -106,6 +114,7 @@ bool app::CreateConsoleWindow(HWND pIPC, LPCWSTR lpApplication, LPCWSTR lpComman
 	}
 	if (lpApplication) wcscpy_s(ccri.lpApplication, lpApplication);
 	if (lpCommand) wcscpy_s(ccri.lpCommand, lpCommand);
+	GetCurrentDirectoryW(sizeof(ccri.lpCurrentDirectory) / sizeof(decltype(ccri.lpCurrentDirectory[0])), ccri.lpCurrentDirectory);
 	ccri.nCmdShow = (lpStartupInfo && (lpStartupInfo->dwFlags & STARTF_USESHOWWINDOW)) ?
 		(lpStartupInfo->wShowWindow) : SW_NORMAL;
 	

@@ -26,6 +26,7 @@ namespace app::ipc {
 	struct CreateConsoleRequestInfo {
 		WCHAR lpApplication[32768];
 		WCHAR lpCommand[32768];
+		WCHAR lpCurrentDirectory[32768];
 		int x, y, w, h;
 		int nCmdShow;
 	};

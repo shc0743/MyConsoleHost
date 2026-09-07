@@ -21,7 +21,7 @@ namespace app::ui {
 		ConsoleWindow(int x, int y, int wc, int hc) :
 			fontSize(defaultFontSize),
 			wc(wc), hc(hc),
-			Window(L"Console", (defaultFontSize / 2) * wc, defaultFontSize * hc, x, y,
+			Window(L"Console", (defaultFontSize / 2)* wc, defaultFontSize* hc, x, y,
 				WS_OVERLAPPEDWINDOW | WS_VSCROLL, WS_EX_LAYERED) {
 			font_name = L"Consolas";
 		}
@@ -53,6 +53,7 @@ namespace app::ui {
 		void onCreated() override;
 		void onDestroy() override;
 
+		void onClose(EventData& ev);
 		void onEraseBkgnd(EventData& ev);
 		void doPaint(EventData& ev);
 		void onSize(EventData& ev);
@@ -65,6 +66,10 @@ namespace app::ui {
 		void onLButtonUp(EventData& ev);
 		void onMouseMove(EventData& ev);
 		void onRButtonUp(EventData& ev);
+		void onRButtonDown(EventData& ev);
+		void onMButtonDown(EventData& ev);
+		void onMButtonUp(EventData& ev);
+		void sendMouseEvent(int button, bool isRelease, bool isDrag, bool isWheel, int col, int row);
 		void onContextMenu(EventData& ev);
 		void onMenuCommand(EventData& ev);
 
@@ -78,6 +83,7 @@ namespace app::ui {
 		void onOutputNotify(EventData& ev);
 
 		void setup_event_handlers() override {
+			WINDOW_add_handler(WM_CLOSE, onClose);
 			WINDOW_add_handler(WM_ERASEBKGND, onEraseBkgnd);
 			WINDOW_add_handler(WM_PAINT, doPaint);
 			WINDOW_add_handler(WM_SIZE, onSize);
@@ -90,6 +96,9 @@ namespace app::ui {
 			WINDOW_add_handler(WM_LBUTTONUP, onLButtonUp);
 			WINDOW_add_handler(WM_MOUSEMOVE, onMouseMove);
 			WINDOW_add_handler(WM_RBUTTONUP, onRButtonUp);
+			WINDOW_add_handler(WM_RBUTTONDOWN, onRButtonDown);
+			WINDOW_add_handler(WM_MBUTTONDOWN, onMButtonDown);
+			WINDOW_add_handler(WM_MBUTTONUP, onMButtonUp);
 			WINDOW_add_handler(WM_CONTEXTMENU, onContextMenu);
 			WINDOW_add_handler(WM_MENU_CHECKED, onMenuCommand);
 			WINDOW_add_handler(WM_IME_SETCONTEXT, onImeSetContext);
@@ -164,6 +173,9 @@ namespace app::ui {
 		std::wstring imeComp;
 
 		int wheelRemainder = 0;
+		int mouseTrackingMode = 0;
+		bool sgrMouseMode = false;
+		int pressedMouseButton = -1;
 
 		void processOutput(const char* data, DWORD len);
 		void processChar(wchar_t ch);
@@ -171,7 +183,7 @@ namespace app::ui {
 		void onVtPrint(wchar_t ch);
 		void onVtCtrl(wchar_t ch);
 		void onVtCsi(wchar_t finalByte, const std::vector<int>& params,
-		             wchar_t privateMarker, const std::wstring& intermediates);
+			wchar_t privateMarker, const std::wstring& intermediates);
 		void onVtOsc(int command, const std::wstring& data);
 		void applySgr(const std::vector<int>& params);
 		void resetAttr();
@@ -211,10 +223,10 @@ namespace app::ui {
 		static bool isWideChar(wchar_t ch);
 
 		static constexpr COLORREF Palette16[16] = {
-			RGB(  0,   0,   0), RGB(128,   0,   0), RGB(  0, 128,   0), RGB(128, 128,   0),
-			RGB(  0,   0, 128), RGB(128,   0, 128), RGB(  0, 128, 128), RGB(192, 192, 192),
-			RGB(128, 128, 128), RGB(255,   0,   0), RGB(  0, 255,   0), RGB(255, 255,   0),
-			RGB(  0,   0, 255), RGB(255,   0, 255), RGB(  0, 255, 255), RGB(255, 255, 255),
+			RGB(0,   0,   0), RGB(128,   0,   0), RGB(0, 128,   0), RGB(128, 128,   0),
+			RGB(0,   0, 128), RGB(128,   0, 128), RGB(0, 128, 128), RGB(192, 192, 192),
+			RGB(128, 128, 128), RGB(255,   0,   0), RGB(0, 255,   0), RGB(255, 255,   0),
+			RGB(0,   0, 255), RGB(255,   0, 255), RGB(0, 255, 255), RGB(255, 255, 255),
 		};
 		static constexpr COLORREF DefaultForeground = Palette16[7];
 		static constexpr COLORREF DefaultBackground = Palette16[0];
@@ -223,6 +235,6 @@ namespace app::ui {
 		enum { WMU_OUTPUT = WM_APP + 1 };
 
 	public:
-		bool SpawnApplication(_In_opt_ PCWSTR app, _In_opt_ PCWSTR cmd);
+		bool SpawnApplication(_In_opt_ PCWSTR app, _In_opt_ PCWSTR cmd, _In_opt_ PCWSTR cd);
 	};
 }

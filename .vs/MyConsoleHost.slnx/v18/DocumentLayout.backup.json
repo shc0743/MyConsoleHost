@@ -3,27 +3,8 @@
   "WorkspaceRootPath": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{B8415D70-EB3D-4F78-ACCE-4226E9FF6521}|MyConsoleHost\\MyConsoleHost.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\ipc_window.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{B8415D70-EB3D-4F78-ACCE-4226E9FF6521}|MyConsoleHost\\MyConsoleHost.vcxproj|solutionrelative:MyConsoleHost\\ipc_window.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{B8415D70-EB3D-4F78-ACCE-4226E9FF6521}|MyConsoleHost\\MyConsoleHost.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{B8415D70-EB3D-4F78-ACCE-4226E9FF6521}|MyConsoleHost\\MyConsoleHost.vcxproj|solutionrelative:MyConsoleHost\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{B8415D70-EB3D-4F78-ACCE-4226E9FF6521}|MyConsoleHost\\MyConsoleHost.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\ipc_window.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{B8415D70-EB3D-4F78-ACCE-4226E9FF6521}|MyConsoleHost\\MyConsoleHost.vcxproj|solutionrelative:MyConsoleHost\\ipc_window.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{B8415D70-EB3D-4F78-ACCE-4226E9FF6521}|MyConsoleHost\\MyConsoleHost.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\console_window.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{B8415D70-EB3D-4F78-ACCE-4226E9FF6521}|MyConsoleHost\\MyConsoleHost.vcxproj|solutionrelative:MyConsoleHost\\console_window.hpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{B8415D70-EB3D-4F78-ACCE-4226E9FF6521}|MyConsoleHost\\MyConsoleHost.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\console_window.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{B8415D70-EB3D-4F78-ACCE-4226E9FF6521}|MyConsoleHost\\MyConsoleHost.vcxproj|solutionrelative:MyConsoleHost\\console_window.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|E:\\Windows Kits\\10\\Source\\10.0.26100.0\\ucrt\\string\\strnlen.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -33,84 +14,19 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 0,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "main.cpp",
               "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\main.cpp",
               "RelativeDocumentMoniker": "MyConsoleHost\\main.cpp",
               "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\main.cpp",
               "RelativeToolTip": "MyConsoleHost\\main.cpp",
-              "ViewState": "AgIAAFIAAACQMQbWcQwswHMAAAAUAAAAAAAAAA==",
+              "ViewState": "AgIAABwAAAAAAAAAAAAnwEAAAAADAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-09-06T15:06:22.244Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "ipc_window.cpp",
-              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\ipc_window.cpp",
-              "RelativeDocumentMoniker": "MyConsoleHost\\ipc_window.cpp",
-              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\ipc_window.cpp",
-              "RelativeToolTip": "MyConsoleHost\\ipc_window.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB4AAAASAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-09-06T15:05:21.294Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "ipc_window.hpp",
-              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\ipc_window.hpp",
-              "RelativeDocumentMoniker": "MyConsoleHost\\ipc_window.hpp",
-              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\ipc_window.hpp",
-              "RelativeToolTip": "MyConsoleHost\\ipc_window.hpp",
-              "ViewState": "AgIAAAUAAAAAAAAAAAAswBkAAAAIAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2026-09-06T15:05:00.209Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "console_window.hpp",
-              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\console_window.hpp",
-              "RelativeDocumentMoniker": "MyConsoleHost\\console_window.hpp",
-              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\console_window.hpp",
-              "RelativeToolTip": "MyConsoleHost\\console_window.hpp",
-              "ViewState": "AgIAABkAAAAA9DgM5g/6vwAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2026-09-06T15:04:57.124Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "console_window.cpp",
-              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\console_window.cpp",
-              "RelativeDocumentMoniker": "MyConsoleHost\\console_window.cpp",
-              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\console_window.cpp",
-              "RelativeToolTip": "MyConsoleHost\\console_window.cpp",
-              "ViewState": "AgIAABUAAAAAuATgn+ovwCMAAAA+AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-09-06T15:04:40.804Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "strnlen.cpp",
-              "DocumentMoniker": "E:\\Windows Kits\\10\\Source\\10.0.26100.0\\ucrt\\string\\strnlen.cpp",
-              "RelativeDocumentMoniker": "..\\..\\..\\..\\..\\..\\..\\Windows Kits\\10\\Source\\10.0.26100.0\\ucrt\\string\\strnlen.cpp",
-              "ToolTip": "E:\\Windows Kits\\10\\Source\\10.0.26100.0\\ucrt\\string\\strnlen.cpp",
-              "RelativeToolTip": "..\\..\\..\\..\\..\\..\\..\\Windows Kits\\10\\Source\\10.0.26100.0\\ucrt\\string\\strnlen.cpp",
-              "ViewState": "AgIAALcAAAAAAAAAAAAAwNsAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-09-06T15:04:37.185Z",
+              "WhenOpened": "2026-09-07T09:26:36.075Z",
               "EditorCaption": ""
             }
           ]
