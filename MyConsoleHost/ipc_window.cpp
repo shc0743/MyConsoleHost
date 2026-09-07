@@ -1,7 +1,12 @@
 ﻿#include "ipc_window.hpp"
 #include "console_window.hpp"
 #include "basedef.hpp"
+#include <ShlObj.h>
 using namespace std;
+
+void app::ipc::IPCWindow::onCreated() {
+	text(getUserIdentifier());
+}
 
 void app::ipc::IPCWindow::requestCreateConsole(EventData& ev) {
 	HANDLE hProcess = OpenProcess(PROCESS_VM_READ, false, (DWORD)ev.wParam);
@@ -31,4 +36,12 @@ void app::ipc::IPCWindow::requestCreateConsole(EventData& ev) {
 	pWindow->show(req->nCmdShow);
 	pWindow->focus();
 	app::windows.push_back(std::move(pWindow));
+}
+
+std::wstring app::ipc::IPCWindow::getUserIdentifier() {
+	WCHAR username[256]{};
+	DWORD size = 256;
+	GetUserNameW(username, &size);
+	BOOL IsAdmin = IsUserAnAdmin();
+	return format(L"IPC Window: User:[{}];Admin?:[{}]", username, IsAdmin);
 }

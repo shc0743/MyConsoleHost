@@ -111,6 +111,9 @@ bool app::ui::ConsoleWindow::SpawnApplication(_In_opt_ PCWSTR app, _In_opt_ PCWS
 			)) {
 				ok = true;
 			}
+			else {
+				DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
+			}
 		}
 	}
 	if (!ok) {

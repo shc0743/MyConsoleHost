@@ -32,20 +32,132 @@ int APIENTRY wWinMain(
 	bool hidden = false;
 	bool noUI = false;
 	bool newInstance = false;
+	bool wait = false;
+	bool forkServer = false;
+	DWORD serverOutProcess = 0;
+	ULONGLONG serverOutAddress = 0;
+	ULONGLONG serverOutEvent = 0;
 	app.add_flag("--hidden", hidden);
 	app.add_flag("--no-ui", noUI);
 	app.add_flag("--new-instance", newInstance);
+	app.add_flag("--wait", wait);
+	app.add_flag("--fork-server", forkServer);
+	app.add_option("--server-out-process", serverOutProcess);
+	app.add_option("--server-out-address", serverOutAddress);
+	app.add_option("--server-out-event", serverOutEvent);
 	try { app.parse(utf16_utf8(GetCommandLineW()), true); }
 	catch (exception& exc) {
 		fputs("0\r\n", stdout);
 		fputs(exc.what(), stderr);
 		// this is only debug purpose; do not depend in production!
 		if (wstring(lpCmdLine).find(L"--no-ui") == wstring::npos) MessageBoxW(NULL, format(L"{}: {}",
-			utf8_utf16(typeid(exc).name()), utf8_utf16(exc.what())).c_str(), NULL, 0x10);
+			utf8_utf16(typeid(exc).name()), utf8_utf16(exc.what())).c_str(), L"Console", 0x10);
 		return ERROR_INVALID_PARAMETER;
 	}
 
-	auto consoleWinStart = [&app, &noUI](HWND hWnd) -> int {
+	if (!forkServer) {
+		// if stdio is redirected, communicate with cmd and other apps might broken
+		// so fork a new process detached to avoid io redirect
+		volatile HWND outHwnd{};
+		SECURITY_ATTRIBUTES sa{ .nLength = sizeof(sa), .lpSecurityDescriptor = 0, .bInheritHandle = true };
+		HANDLE hEvent = CreateEventW(&sa, FALSE, FALSE, NULL);
+		if (!hEvent) return GetLastError();
+		wstring newCmd = format(L"console --fork-server --server-out-process={} --server-out-address={} "
+			"--server-out-event={} ", GetCurrentProcessId(), (ULONGLONG)&outHwnd, (ULONGLONG)hEvent);
+		newCmd += lpCmdLine;
+		STARTUPINFOW si{}; PROCESS_INFORMATION pi{};
+		GetStartupInfoW(&si);
+		si.dwFlags &= ~STARTF_USESTDHANDLES;
+		si.hStdInput = si.hStdOutput = si.hStdError = 0;
+		try {
+			auto app = make_unique<WCHAR[]>(32768);
+			GetModuleFileNameW(NULL, app.get(), 32768);
+			HANDLE hToken{};
+			{
+				w32ProcessHandle hProcess = OpenProcess(
+					PROCESS_QUERY_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION,
+					FALSE, GetCurrentProcessId());
+				HANDLE hImpToken{};
+				OpenProcessToken(hProcess, TOKEN_DUPLICATE | TOKEN_QUERY, &hImpToken);
+				if (!hImpToken) throw runtime_error("");
+				DuplicateTokenEx(hImpToken, TOKEN_ALL_ACCESS, nullptr, SecurityImpersonation, TokenPrimary, &hToken);
+				CloseHandle(hImpToken);
+				if (!hToken) throw runtime_error("");
+			}
+			STARTUPINFOEXW siex{};
+			std::unique_ptr<uint8_t[]> attributeList;
+			SIZE_T need{};
+			bool ok = false;
+			HANDLE hList[] = { hEvent };
+			InitializeProcThreadAttributeList(0, 1, 0, &need);
+			if (need && need < 32768) {
+				attributeList = make_unique<uint8_t[]>(need);
+				if (InitializeProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get(),
+					1, 0, &need)) {
+					if (UpdateProcThreadAttribute(
+						(PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get(), 0,
+						PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+						&hList, // only 1 handle
+						sizeof(HANDLE),
+						NULL, NULL
+					)) {
+						ok = true;
+					}
+					else {
+						DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
+					}
+				}
+			}
+			if (!ok) {
+				CloseHandle(hToken);
+				throw runtime_error("");
+			}
+			siex.StartupInfo = si;
+			siex.StartupInfo.cb = sizeof(siex);
+			siex.lpAttributeList = PPROC_THREAD_ATTRIBUTE_LIST(attributeList ? attributeList.get() : nullptr);
+#pragma warning(push)
+#pragma warning(disable: 6335)
+			BOOL r = CreateProcessAsUserW(hToken, app.get(), newCmd.data(), NULL, NULL, TRUE,
+				CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED | CREATE_DEFAULT_ERROR_MODE | EXTENDED_STARTUPINFO_PRESENT,
+				NULL, NULL, (LPSTARTUPINFOW)&siex, &pi);
+			DWORD e = GetLastError();
+			if (attributeList) DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
+			CloseHandle(hToken);
+			SetLastError(e);
+			if (!r) {
+				throw runtime_error("");
+			}
+#pragma warning(pop)
+		}
+		catch (...) {
+			DWORD e = GetLastError();
+			if (!e) e = -1;
+			if (!noUI) MessageBoxW(NULL, ErrorChecker(e).message().c_str(), L"Console", MB_ICONERROR);
+			return e;
+		}
+		DWORD code = 0;bool c1 = false;
+		ResumeThread(pi.hThread);
+		CloseHandle(pi.hThread);
+		if (wait) {
+			WaitForSingleObject(pi.hProcess, INFINITE);
+			GetExitCodeProcess(pi.hProcess, &code);
+			c1 = true;
+		}
+		else {
+			HANDLE waits[]{ pi.hProcess, hEvent };
+			if (WAIT_OBJECT_0 == WaitForMultipleObjects(2, waits, false, INFINITE)) {
+				GetExitCodeProcess(pi.hProcess, &code);
+				c1 = true;
+			}
+		}
+		CloseHandle(pi.hProcess);
+		CloseHandle(hEvent);
+		cout << to_string((ULONGLONG)outHwnd) << endl;
+		if (!c1) return (outHwnd ? 0 : -1);
+		return code;
+	}
+
+	auto consoleWinStart = [&app, &noUI](HWND hWnd, bool noErr) -> int {
 		STARTUPINFOW si{};
 		GetStartupInfoW(&si);
 		auto extra = app.remaining(true);
@@ -56,21 +168,39 @@ int APIENTRY wWinMain(
 		)) {
 			DWORD e = GetLastError();
 			if (!e) e = -1;
-			if (!noUI) thread([](DWORD e) {
+			if (!noUI && ! noErr) thread([](DWORD e) {
 				MessageBoxW(NULL, ErrorChecker(e).message().c_str(), L"Console", MB_ICONERROR);
 			}, e).join();
 			return e;
 		}
 		return 0;
 	};
+	auto outputResult = [&serverOutProcess, &serverOutAddress, &serverOutEvent](HWND value) {
+		cout << w32oop::util::str::converts::wstr_str(to_wstring((ULONG_PTR)HWND(value))) << endl;
+		if (serverOutProcess && serverOutAddress) {
+			HANDLE hProcess = OpenProcess(PROCESS_VM_WRITE | PROCESS_VM_OPERATION, FALSE, serverOutProcess);
+			if (hProcess) {
+				SIZE_T written{};
+				(void)WriteProcessMemory(hProcess, (LPVOID)serverOutAddress, &value, sizeof(value), &written);
+				CloseHandle(hProcess);
+			}
+		}
+		if (serverOutEvent) {
+			SetEvent((HANDLE)serverOutEvent);
+		}
+	};
 
 	if (!newInstance && !hidden) {
 		// find whether already has a IPCWindow
-		auto c = app::ipc::IPCWindow().get_class_name();
-		HWND h = FindWindowW(c.c_str(), NULL);
-		if (h) {
-			return consoleWinStart(h);
-		}
+		app::ipc::IPCWindow tmp;
+		HWND h = FindWindowW(tmp.get_class_name().c_str(), tmp.getUserIdentifier().c_str());
+		if (h) do {
+			int ret = consoleWinStart(h, true);
+			if (ret != 0) break;
+			if (ret == 0) outputResult(h);
+			else outputResult(0);
+			return ret;
+		} while (0);
 	}
 
 	Window::set_global_option(Window::Option_QuitWhenWindowAllClosed, true);
@@ -80,7 +210,7 @@ int APIENTRY wWinMain(
 	app::ipcWindow->create();
 
 	if (!hidden) {
-		if (int r = consoleWinStart(*app::ipcWindow)) {
+		if (int r = consoleWinStart(*app::ipcWindow, false)) {
 			if (IsWindow(*app::ipcWindow)) app::ipcWindow->close();
 			return r;
 		}
@@ -90,7 +220,8 @@ int APIENTRY wWinMain(
 		if (IsWindow(*app::ipcWindow)) app::ipcWindow->close();
 		return ERROR_NO_DATA;
 	}
-	cout << w32oop::util::str::converts::wstr_str(to_wstring((ULONG_PTR)HWND(*app::ipcWindow))) << endl;
+
+	outputResult(*app::ipcWindow);
 	return Window::run();
 }
 

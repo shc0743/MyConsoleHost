@@ -16,11 +16,16 @@ namespace app::ipc {
 		}
 
 	protected:
+		void onCreated() override;
+
 		void requestCreateConsole(EventData& ev);
 
 		void setup_event_handlers() override {
 			WINDOW_add_handler(IPC_RequestCreateConsole, requestCreateConsole);
 		}
+
+	public:
+		std::wstring getUserIdentifier();
 	};
 
 	struct CreateConsoleRequestInfo {
