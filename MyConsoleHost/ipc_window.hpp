@@ -18,13 +18,16 @@ namespace app::ipc {
 	protected:
 		void onCreated() override;
 
+		void onClose(EventData& ev);
 		void requestCreateConsole(EventData& ev);
 
 		void setup_event_handlers() override {
+			WINDOW_add_handler(WM_CLOSE, onClose);
 			WINDOW_add_handler(IPC_RequestCreateConsole, requestCreateConsole);
 		}
 
 	public:
+		void dest() { destroy(); }
 		std::wstring getUserIdentifier();
 	};
 

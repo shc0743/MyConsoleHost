@@ -51,6 +51,9 @@
     <ClCompile Include="..\..\w32oop\GUI\Window.cpp">
       <Filter>third-party\w32oop</Filter>
     </ClCompile>
+    <ClCompile Include="WindowAlphaEditor.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="console_window.hpp">
@@ -69,6 +72,9 @@
       <Filter>third-party\CLI11</Filter>
     </ClInclude>
     <ClInclude Include="vt_parser.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="WindowAlphaEditor.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

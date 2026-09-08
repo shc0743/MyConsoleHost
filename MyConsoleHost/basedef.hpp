@@ -1,4 +1,5 @@
 ﻿#include "targetver.h"
+#include "../../w32oop/w32use.hpp"
 #include <vector>
 #include <memory>
 
@@ -12,7 +13,7 @@ namespace app {
 	}
 
 	// extern
-	extern std::vector<std::shared_ptr<ui::ConsoleWindow>> windows;
+	extern std::vector<std::shared_ptr<Window>> windows;
 	extern std::unique_ptr<ipc::IPCWindow> ipcWindow;
 
 	// func

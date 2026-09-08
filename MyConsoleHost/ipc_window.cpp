@@ -8,6 +8,11 @@ void app::ipc::IPCWindow::onCreated() {
 	text(getUserIdentifier());
 }
 
+void app::ipc::IPCWindow::onClose(EventData& ev) {
+	for (auto& i : app::windows) i->post(WM_CLOSE);
+	SendMessageW(hwnd, WM_NULL, 0, 0);
+}
+
 void app::ipc::IPCWindow::requestCreateConsole(EventData& ev) {
 	HANDLE hProcess = OpenProcess(PROCESS_VM_READ, false, (DWORD)ev.wParam);
 	if (!hProcess) {

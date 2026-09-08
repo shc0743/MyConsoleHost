@@ -52,6 +52,7 @@ namespace app::ui {
 
 		void onCreated() override;
 		void onDestroy() override;
+		void onNcDestroy(EventData&);
 
 		void onClose(EventData& ev);
 		void onEraseBkgnd(EventData& ev);
@@ -72,6 +73,7 @@ namespace app::ui {
 		void sendMouseEvent(int button, bool isRelease, bool isDrag, bool isWheel, int col, int row);
 		void onContextMenu(EventData& ev);
 		void onMenuCommand(EventData& ev);
+		void onSysMenu(EventData& ev);
 
 		void onImeSetContext(EventData& ev);
 		void onImeStartComposition(EventData& ev);
@@ -84,6 +86,7 @@ namespace app::ui {
 
 		void setup_event_handlers() override {
 			WINDOW_add_handler(WM_CLOSE, onClose);
+			WINDOW_add_handler(WM_NCDESTROY, onNcDestroy);
 			WINDOW_add_handler(WM_ERASEBKGND, onEraseBkgnd);
 			WINDOW_add_handler(WM_PAINT, doPaint);
 			WINDOW_add_handler(WM_SIZE, onSize);
@@ -101,6 +104,7 @@ namespace app::ui {
 			WINDOW_add_handler(WM_MBUTTONUP, onMButtonUp);
 			WINDOW_add_handler(WM_CONTEXTMENU, onContextMenu);
 			WINDOW_add_handler(WM_MENU_CHECKED, onMenuCommand);
+			WINDOW_add_handler(WM_SYSCOMMAND, onSysMenu);
 			WINDOW_add_handler(WM_IME_SETCONTEXT, onImeSetContext);
 			WINDOW_add_handler(WM_IME_STARTCOMPOSITION, onImeStartComposition);
 			WINDOW_add_handler(WM_IME_COMPOSITION, onImeComposition);

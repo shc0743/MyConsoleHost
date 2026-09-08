@@ -11,7 +11,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "comctl32.lib")
 
 namespace app {
-	vector<shared_ptr<ui::ConsoleWindow>> windows;
+	vector<shared_ptr<Window>> windows;
 	unique_ptr<ipc::IPCWindow> ipcWindow;
 }
 HINSTANCE hInst;
@@ -208,16 +208,17 @@ int APIENTRY wWinMain(
 
 	app::ipcWindow = unique_ptr<app::ipc::IPCWindow>(new app::ipc::IPCWindow());
 	app::ipcWindow->create();
+	app::ipcWindow->set_main_window();
 
 	if (!hidden) {
 		if (int r = consoleWinStart(*app::ipcWindow, false)) {
-			if (IsWindow(*app::ipcWindow)) app::ipcWindow->close();
+			if (IsWindow(*app::ipcWindow)) app::ipcWindow->dest();
 			return r;
 		}
 	}
 
 	if (!hidden && app::windows.size() == 0) {
-		if (IsWindow(*app::ipcWindow)) app::ipcWindow->close();
+		if (IsWindow(*app::ipcWindow)) app::ipcWindow->dest();
 		return ERROR_NO_DATA;
 	}
 

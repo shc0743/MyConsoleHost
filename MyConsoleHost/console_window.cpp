@@ -1,5 +1,6 @@
 ﻿#include "console_window.hpp"
 #include "ipc_window.hpp"
+#include "WindowAlphaEditor.h"
 #include "basedef.hpp"
 #include <algorithm>
 #include <cstring>
@@ -8,7 +9,7 @@
 #include <cwchar>
 #pragma comment(lib, "imm32.lib")
 using namespace std;
-#pragma optimize("",off)
+
 int app::ui::ConsoleWindow::defaultFontSize = 14;
 
 void app::ui::ConsoleWindow::onCreated() {
@@ -49,6 +50,10 @@ void app::ui::ConsoleWindow::onCreated() {
 		};
 	vtcb.onOsc = [this](int cmd, const std::wstring& d) { onVtOsc(cmd, d); };
 	vtParser.setCallbacks(std::move(vtcb));
+
+	HMENU sys = sysmenu();
+	AppendMenuW(sys, MF_SEPARATOR, 0, NULL);
+	AppendMenuW(sys, MF_STRING, 1001, L"Set Opacity...");
 }
 
 
@@ -67,9 +72,18 @@ void app::ui::ConsoleWindow::onDestroy() {
 	}
 
 	for (auto& w : app::windows) {
-		if (w && w.get() != this && w->is_alive()) return;
+		if (w && w.get() != this && IsWindow(*w)) return;
 	}
 	DestroyWindow(*ipcWindow);
+}
+
+
+void app::ui::ConsoleWindow::onNcDestroy(EventData&) {
+	invokeLater([](Window* w, EventData&) {
+		app::windows.erase(remove_if(app::windows.begin(), app::windows.end(), [w](decltype(app::windows)::value_type v) {
+			return v.get() == w;
+		}), app::windows.end());
+	});
 }
 
 
@@ -1690,6 +1704,26 @@ void app::ui::ConsoleWindow::onMenuCommand(EventData& ev) {
 	case IDM_CLOSE: PostMessageW(hwnd, WM_CLOSE, 0, 0); break;
 	default: break;
 	}
+}
+
+void app::ui::ConsoleWindow::onSysMenu(EventData& ev) {
+	switch (ev.wParam) {
+	case 1001:
+		AllowSetForegroundWindow(ASFW_ANY);
+		std::thread([](HWND hwnd) {
+			ui::WindowAlphaEditor w;
+			w.create();
+			w.setTarget(hwnd);
+			w.center(hwnd);
+			w.show();
+			w.focus();
+			return w.run();
+		}, hwnd).detach();
+		break;
+	default:
+		return;
+	}
+	ev.preventDefault();
 }
 
 COLORREF app::ui::ConsoleWindow::effFg() const {
