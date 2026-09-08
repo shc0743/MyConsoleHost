@@ -3,8 +3,8 @@
   "WorkspaceRootPath": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{B8415D70-EB3D-4F78-ACCE-4226E9FF6521}|MyConsoleHost\\MyConsoleHost.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\console_window.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{B8415D70-EB3D-4F78-ACCE-4226E9FF6521}|MyConsoleHost\\MyConsoleHost.vcxproj|solutionrelative:MyConsoleHost\\console_window.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{B8415D70-EB3D-4F78-ACCE-4226E9FF6521}|MyConsoleHost\\MyConsoleHost.vcxproj|E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{B8415D70-EB3D-4F78-ACCE-4226E9FF6521}|MyConsoleHost\\MyConsoleHost.vcxproj|solutionrelative:MyConsoleHost\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -23,14 +23,14 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "console_window.cpp",
-              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\console_window.cpp",
-              "RelativeDocumentMoniker": "MyConsoleHost\\console_window.cpp",
-              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\console_window.cpp",
-              "RelativeToolTip": "MyConsoleHost\\console_window.cpp",
-              "ViewState": "AgIAAKAGAAAAAAAAAAAiwK4GAAALAAAAAAAAAA==",
+              "Title": "main.cpp",
+              "DocumentMoniker": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\main.cpp",
+              "RelativeDocumentMoniker": "MyConsoleHost\\main.cpp",
+              "ToolTip": "E:\\Users\\shc07\\Code\\git\\github.com\\shc0743\\MyConsoleHost\\MyConsoleHost\\main.cpp",
+              "RelativeToolTip": "MyConsoleHost\\main.cpp",
+              "ViewState": "AgIAAKIAAAAAwkoFFRUUwLgAAAAVAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-09-08T05:49:36.74Z",
+              "WhenOpened": "2026-09-08T09:45:43.096Z",
               "EditorCaption": ""
             }
           ]

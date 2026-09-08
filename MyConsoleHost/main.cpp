@@ -32,6 +32,7 @@ int APIENTRY wWinMain(
 	bool hidden = false;
 	bool noUI = false;
 	bool newInstance = false;
+	bool standalone = false;
 	bool wait = false;
 	bool forkServer = false;
 	DWORD serverOutProcess = 0;
@@ -40,6 +41,7 @@ int APIENTRY wWinMain(
 	app.add_flag("--hidden", hidden);
 	app.add_flag("--no-ui", noUI);
 	app.add_flag("--new-instance", newInstance);
+	app.add_flag("--standalone", standalone);
 	app.add_flag("--wait", wait);
 	app.add_flag("--fork-server", forkServer);
 	app.add_option("--server-out-process", serverOutProcess);
@@ -62,7 +64,7 @@ int APIENTRY wWinMain(
 		SECURITY_ATTRIBUTES sa{ .nLength = sizeof(sa), .lpSecurityDescriptor = 0, .bInheritHandle = true };
 		HANDLE hEvent = CreateEventW(&sa, FALSE, FALSE, NULL);
 		if (!hEvent) return GetLastError();
-		wstring newCmd = format(L"console --fork-server --server-out-process={} --server-out-address={} "
+		wstring newCmd = format(L"- --fork-server --server-out-process={} --server-out-address={} "
 			"--server-out-event={} ", GetCurrentProcessId(), (ULONGLONG)&outHwnd, (ULONGLONG)hEvent);
 		newCmd += lpCmdLine;
 		STARTUPINFOW si{}; PROCESS_INFORMATION pi{};
@@ -190,7 +192,7 @@ int APIENTRY wWinMain(
 		}
 	};
 
-	if (!newInstance && !hidden) {
+	if (!standalone && !newInstance && !hidden) {
 		// find whether already has a IPCWindow
 		app::ipc::IPCWindow tmp;
 		HWND h = FindWindowW(tmp.get_class_name().c_str(), tmp.getUserIdentifier().c_str());
@@ -209,6 +211,7 @@ int APIENTRY wWinMain(
 	app::ipcWindow = unique_ptr<app::ipc::IPCWindow>(new app::ipc::IPCWindow());
 	app::ipcWindow->create();
 	app::ipcWindow->set_main_window();
+	if (standalone) app::ipcWindow->text(L"Standalone Mode");
 
 	if (!hidden) {
 		if (int r = consoleWinStart(*app::ipcWindow, false)) {
