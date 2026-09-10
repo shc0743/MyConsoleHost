@@ -5,12 +5,16 @@
 using namespace std;
 
 void app::ipc::IPCWindow::onCreated() {
-	text(getUserIdentifier());
+	text(getUserIdentifier(L""));
 }
 
 void app::ipc::IPCWindow::onClose(EventData& ev) {
 	for (auto& i : app::windows) i->post(WM_CLOSE);
 	SendMessageW(hwnd, WM_NULL, 0, 0);
+}
+
+template<size_t N> inline void ensureNullStr(WCHAR(&a)[N]) {
+	a[std::size(a) - 1] = 0;
 }
 
 void app::ipc::IPCWindow::requestCreateConsole(EventData& ev) {
@@ -27,6 +31,9 @@ void app::ipc::IPCWindow::requestCreateConsole(EventData& ev) {
 		return;
 	}
 	CloseHandle(hProcess);
+	ensureNullStr(req->lpApplication);
+	ensureNullStr(req->lpCommand);
+	ensureNullStr(req->lpCurrentDirectory);
 	auto pWindow = shared_ptr<ui::ConsoleWindow>(new ui::ConsoleWindow(req->x, req->y, req->w, req->h));
 	pWindow->create();
 	if (pWindow->SpawnApplication(
@@ -39,14 +46,14 @@ void app::ipc::IPCWindow::requestCreateConsole(EventData& ev) {
 		return;
 	}
 	pWindow->show(req->nCmdShow);
-	pWindow->focus();
+	if (req->nCmdShow) pWindow->focus();
 	app::windows.push_back(std::move(pWindow));
 }
 
-std::wstring app::ipc::IPCWindow::getUserIdentifier() {
+std::wstring app::ipc::IPCWindow::getUserIdentifier(std::wstring userId) {
 	WCHAR username[256]{};
 	DWORD size = 256;
 	GetUserNameW(username, &size);
 	BOOL IsAdmin = IsUserAnAdmin();
-	return format(L"IPC Window: User:[{}];Admin?:[{}]", username, IsAdmin);
+	return format(L"IPC Window: User:[{}];Admin?:[{}];UserId:[{}]", username, IsAdmin, userId);
 }

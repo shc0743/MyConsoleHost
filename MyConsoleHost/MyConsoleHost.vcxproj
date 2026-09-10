@@ -168,6 +168,8 @@
     <ClCompile Include="console_window.cpp" />
     <ClCompile Include="ipc_window.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="renderer_main.cpp" />
+    <ClCompile Include="sandbox_container.cpp" />
     <ClCompile Include="WindowAlphaEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -175,8 +177,8 @@
     <ClInclude Include="basedef.hpp" />
     <ClInclude Include="console_window.hpp" />
     <ClInclude Include="ipc_window.hpp" />
+    <ClInclude Include="renderer_main.hpp" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="vt_parser.hpp" />
     <ClInclude Include="WindowAlphaEditor.h" />
   </ItemGroup>
   <ItemGroup>

@@ -28,7 +28,7 @@ namespace app::ipc {
 
 	public:
 		void dest() { destroy(); }
-		std::wstring getUserIdentifier();
+		std::wstring getUserIdentifier(std::wstring userId);
 	};
 
 	struct CreateConsoleRequestInfo {

@@ -15,6 +15,8 @@ namespace app {
 	// extern
 	extern std::vector<std::shared_ptr<Window>> windows;
 	extern std::unique_ptr<ipc::IPCWindow> ipcWindow;
+	extern HANDLE hSandboxProcess;
+	//extern HANDLE hSandboxJob;
 
 	// func
 	bool CreateConsoleWindow(HWND pIPC, LPCWSTR lpApplication, LPCWSTR lpCommand, LPSTARTUPINFOW lpStartupInfo);

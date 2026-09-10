@@ -2,6 +2,7 @@
 #include "basedef.hpp"
 #include "ipc_window.hpp"
 #include "console_window.hpp"
+#include "renderer_main.hpp"
 #include "../lib/CLI11.hpp"
 using namespace std;
 
@@ -13,8 +14,13 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 namespace app {
 	vector<shared_ptr<Window>> windows;
 	unique_ptr<ipc::IPCWindow> ipcWindow;
+	HANDLE hSandboxProcess;
+	//HANDLE hSandboxJob;
 }
 HINSTANCE hInst;
+
+int SandboxContainerStartup(bool noError);
+int SandboxContainerMain(HANDLE hProcess);
 
 int APIENTRY wWinMain(
 	_In_ HINSTANCE hInstance,
@@ -29,6 +35,9 @@ int APIENTRY wWinMain(
 	using namespace w32oop::util::str::encodings;
 	CLI::App app;
 	app.allow_extras();
+	string type;
+	string userId;
+	bool internal = false;
 	bool hidden = false;
 	bool noUI = false;
 	bool newInstance = false;
@@ -38,6 +47,10 @@ int APIENTRY wWinMain(
 	DWORD serverOutProcess = 0;
 	ULONGLONG serverOutAddress = 0;
 	ULONGLONG serverOutEvent = 0;
+	ULONGLONG clientId = 0;
+	app.add_flag("--type", type);
+	app.add_flag("--user-id", userId);
+	app.add_flag("--internal", internal);
 	app.add_flag("--hidden", hidden);
 	app.add_flag("--no-ui", noUI);
 	app.add_flag("--new-instance", newInstance);
@@ -47,6 +60,7 @@ int APIENTRY wWinMain(
 	app.add_option("--server-out-process", serverOutProcess);
 	app.add_option("--server-out-address", serverOutAddress);
 	app.add_option("--server-out-event", serverOutEvent);
+	app.add_option("--client-id", clientId);
 	try { app.parse(utf16_utf8(GetCommandLineW()), true); }
 	catch (exception& exc) {
 		fputs("0\r\n", stdout);
@@ -57,6 +71,15 @@ int APIENTRY wWinMain(
 		return ERROR_INVALID_PARAMETER;
 	}
 
+	if (internal && type == "sandbox") {
+		return SandboxContainerMain((HANDLE)clientId);
+	}
+
+	if (internal && type == "renderer") {
+		RendererMainData data;
+		return RendererMain(data);
+	}
+
 	if (!forkServer) {
 		// if stdio is redirected, communicate with cmd and other apps might broken
 		// so fork a new process detached to avoid io redirect
@@ -64,8 +87,9 @@ int APIENTRY wWinMain(
 		SECURITY_ATTRIBUTES sa{ .nLength = sizeof(sa), .lpSecurityDescriptor = 0, .bInheritHandle = true };
 		HANDLE hEvent = CreateEventW(&sa, FALSE, FALSE, NULL);
 		if (!hEvent) return GetLastError();
-		wstring newCmd = format(L"- --fork-server --server-out-process={} --server-out-address={} "
-			"--server-out-event={} ", GetCurrentProcessId(), (ULONGLONG)&outHwnd, (ULONGLONG)hEvent);
+		wstring newCmd = format(L"- --type=main --fork-server --user-id=\"{}\" --server-out-process={} "
+			"--server-out-address={} --server-out-event={} ", utf8_utf16(userId), GetCurrentProcessId(),
+			(ULONGLONG)&outHwnd, (ULONGLONG)hEvent);
 		newCmd += lpCmdLine;
 		STARTUPINFOW si{}; PROCESS_INFORMATION pi{};
 		GetStartupInfoW(&si);
@@ -74,18 +98,6 @@ int APIENTRY wWinMain(
 		try {
 			auto app = make_unique<WCHAR[]>(32768);
 			GetModuleFileNameW(NULL, app.get(), 32768);
-			HANDLE hToken{};
-			{
-				w32ProcessHandle hProcess = OpenProcess(
-					PROCESS_QUERY_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION,
-					FALSE, GetCurrentProcessId());
-				HANDLE hImpToken{};
-				OpenProcessToken(hProcess, TOKEN_DUPLICATE | TOKEN_QUERY, &hImpToken);
-				if (!hImpToken) throw runtime_error("");
-				DuplicateTokenEx(hImpToken, TOKEN_ALL_ACCESS, nullptr, SecurityImpersonation, TokenPrimary, &hToken);
-				CloseHandle(hImpToken);
-				if (!hToken) throw runtime_error("");
-			}
 			STARTUPINFOEXW siex{};
 			std::unique_ptr<uint8_t[]> attributeList;
 			SIZE_T need{};
@@ -111,7 +123,6 @@ int APIENTRY wWinMain(
 				}
 			}
 			if (!ok) {
-				CloseHandle(hToken);
 				throw runtime_error("");
 			}
 			siex.StartupInfo = si;
@@ -119,12 +130,11 @@ int APIENTRY wWinMain(
 			siex.lpAttributeList = PPROC_THREAD_ATTRIBUTE_LIST(attributeList ? attributeList.get() : nullptr);
 #pragma warning(push)
 #pragma warning(disable: 6335)
-			BOOL r = CreateProcessAsUserW(hToken, app.get(), newCmd.data(), NULL, NULL, TRUE,
+			BOOL r = CreateProcessW(app.get(), newCmd.data(), NULL, NULL, TRUE,
 				CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED | CREATE_DEFAULT_ERROR_MODE | EXTENDED_STARTUPINFO_PRESENT,
 				NULL, NULL, (LPSTARTUPINFOW)&siex, &pi);
 			DWORD e = GetLastError();
 			if (attributeList) DeleteProcThreadAttributeList((PPROC_THREAD_ATTRIBUTE_LIST)attributeList.get());
-			CloseHandle(hToken);
 			SetLastError(e);
 			if (!r) {
 				throw runtime_error("");
@@ -159,10 +169,14 @@ int APIENTRY wWinMain(
 		return code;
 	}
 
-	auto consoleWinStart = [&app, &noUI](HWND hWnd, bool noErr) -> int {
+	auto consoleWinStart = [&app, &noUI, &hidden](HWND hWnd, bool noErr) -> int {
 		STARTUPINFOW si{};
 		GetStartupInfoW(&si);
 		auto extra = app.remaining(true);
+		if (hidden) {
+			si.dwFlags |= STARTF_USESHOWWINDOW;
+			si.wShowWindow = SW_HIDE;
+		}
 		if (!app::CreateConsoleWindow(hWnd, 
 			(extra.size() > 1) ? utf8_utf16(extra[1]).c_str() : NULL,
 			(extra.size() > 0) ? utf8_utf16(extra[0]).c_str() : NULL,
@@ -195,7 +209,7 @@ int APIENTRY wWinMain(
 	if (!standalone && !newInstance && !hidden) {
 		// find whether already has a IPCWindow
 		app::ipc::IPCWindow tmp;
-		HWND h = FindWindowW(tmp.get_class_name().c_str(), tmp.getUserIdentifier().c_str());
+		HWND h = FindWindowW(tmp.get_class_name().c_str(), tmp.getUserIdentifier(utf8_utf16(userId)).c_str());
 		if (h) do {
 			int ret = consoleWinStart(h, true);
 			if (ret != 0) break;
@@ -208,16 +222,22 @@ int APIENTRY wWinMain(
 	Window::set_global_option(Window::Option_QuitWhenWindowAllClosed, true);
 	Window::set_global_option(Window::Option_DisableDialogWindowHandling, true);
 
+	// start sandbox container
+	if (int r = SandboxContainerStartup(noUI)) return r;
+	w32oop::util::RAIIHelper _sbxProc([] {
+		if (app::hSandboxProcess) CloseHandle(app::hSandboxProcess);
+		//if (app::hSandboxJob) CloseHandle(app::hSandboxJob);
+	});
+
 	app::ipcWindow = unique_ptr<app::ipc::IPCWindow>(new app::ipc::IPCWindow());
 	app::ipcWindow->create();
 	app::ipcWindow->set_main_window();
 	if (standalone) app::ipcWindow->text(L"Standalone Mode");
+	else app::ipcWindow->text(app::ipcWindow->getUserIdentifier(utf8_utf16(userId)));
 
-	if (!hidden) {
-		if (int r = consoleWinStart(*app::ipcWindow, false)) {
-			if (IsWindow(*app::ipcWindow)) app::ipcWindow->dest();
-			return r;
-		}
+	if (int r = consoleWinStart(*app::ipcWindow, false)) {
+		if (IsWindow(*app::ipcWindow)) app::ipcWindow->dest();
+		return r;
 	}
 
 	if (!hidden && app::windows.size() == 0) {
